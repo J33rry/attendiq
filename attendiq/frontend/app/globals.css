@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   AttendIQ design tokens
+   Warm paper backgrounds, navy ink, four soft classroom accents
+   (sage chalkboard, butter sticky-note, lavender, sky) and a gentle
+   coral for "needs attention". Everything below derives from these.
+   ───────────────────────────────────────────────────────────── */
+@theme {
+  --font-display: var(--font-fraunces), "Georgia", serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-hand: var(--font-caveat), "Comic Sans MS", cursive;
+
+  /* paper / surfaces */
+  --color-paper-50: #fdfbf6;
+  --color-paper-100: #f8f4ea;
+  --color-paper-200: #f0e9d9;
+  --color-paper-300: #e4dbc6;
+  --color-paper-400: #cfc3a8;
+
+  /* ink (text) */
+  --color-ink-300: #a3a9b8;
+  --color-ink-400: #7b8296;
+  --color-ink-500: #565e75;
+  --color-ink-700: #2f3852;
+  --color-ink-900: #1c2338;
+
+  /* sage — primary (chalkboard green) */
+  --color-sage-50: #eef5f0;
+  --color-sage-100: #dceadf;
+  --color-sage-200: #bdd7c3;
+  --color-sage-300: #9cc2a6;
+  --color-sage-400: #78a785;
+  --color-sage-500: #5a8d68;
+  --color-sage-600: #467354;
+  --color-sage-700: #375b43;
+  --color-sage-800: #2a4533;
+
+  /* butter — secondary (sticky note) */
+  --color-butter-50: #fdf7e3;
+  --color-butter-100: #fbefc4;
+  --color-butter-200: #f7e29a;
+  --color-butter-300: #f2d36f;
+  --color-butter-400: #e8bf4a;
+  --color-butter-700: #85621a;
+
+  /* lavender */
+  --color-lavender-50: #f4f1fb;
+  --color-lavender-100: #e8e2f6;
+  --color-lavender-200: #d4caee;
+  --color-lavender-400: #a796da;
+  --color-lavender-700: #5a4a92;
+
+  /* sky */
+  --color-sky-50: #edf5fb;
+  --color-sky-100: #d9eaf6;
+  --color-sky-200: #b9d7ee;
+  --color-sky-400: #78afd9;
+  --color-sky-700: #2d628a;
+
+  /* coral — "needs attention", never alarm red */
+  --color-coral-50: #fcefea;
+  --color-coral-100: #f8ddd3;
+  --color-coral-200: #f1c0ae;
+  --color-coral-400: #e08a6f;
+  --color-coral-700: #9e4630;
+
+  --radius-card: 1.25rem;
+  --radius-control: 0.75rem;
+
+  --shadow-soft: 0 1px 0 rgb(28 35 56 / 0.04), 0 4px 14px -6px rgb(28 35 56 / 0.10);
+  --shadow-lift: 0 2px 0 rgb(28 35 56 / 0.04), 0 14px 28px -12px rgb(28 35 56 / 0.20);
+  --shadow-pop: 0 20px 50px -20px rgb(28 35 56 / 0.35);
+
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  --animate-fade: fade 0.25s ease-out backwards;
+  --animate-pop: pop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-ping-soft: ping-soft 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pop { from { opacity: 0; transform: scale(0.96) translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  @keyframes ping-soft { 0% { transform: scale(1); opacity: 0.6; } 80%, 100% { transform: scale(2.2); opacity: 0; } }
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-paper-100 text-ink-900 font-sans antialiased;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  h1, h2, h3 { @apply font-display text-ink-900; letter-spacing: -0.01em; font-variation-settings: "SOFT" 60, "WONK" 0; }
+  ::selection { background: var(--color-butter-200); }
+  :focus-visible { outline: 2.5px solid var(--color-sky-400); outline-offset: 2px; border-radius: 6px; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  input[type="date"], input[type="time"] { min-height: 2.75rem; }
+}
+
+@layer components {
+  /* faint ruled-notebook paper for hero areas */
+  .paper-ruled {
+    background-image:
+      linear-gradient(to right, transparent 2.25rem, rgb(224 138 111 / 0.22) 2.25rem, rgb(224 138 111 / 0.22) calc(2.25rem + 1px), transparent calc(2.25rem + 1px)),
+      repeating-linear-gradient(to bottom, transparent 0, transparent 27px, rgb(120 175 217 / 0.16) 27px, rgb(120 175 217 / 0.16) 28px);
+  }
+  .paper-dots {
+    background-image: radial-gradient(rgb(28 35 56 / 0.07) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-paper-200) 0%, var(--color-paper-100) 50%, var(--color-paper-200) 100%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-lg;
+  }
+  .tabular { font-variant-numeric: tabular-nums; }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

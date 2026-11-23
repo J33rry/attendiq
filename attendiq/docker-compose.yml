@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: attendiq
+      POSTGRES_PASSWORD: attendiq
+      POSTGRES_DB: attendiq
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attendiq"]
+      interval: 3s
+      retries: 20
+volumes:
+  pgdata:
