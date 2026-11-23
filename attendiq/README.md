@@ -22,7 +22,7 @@ attendiq/
 3. Frontend: `cd frontend && npm install && npm run dev` (http://localhost:3000; set `API_URL` if the API isn't on :4000).
 4. Firmware: edit the constants in `firmware/attendiq_esp32/attendiq_esp32.ino`; `SERVER_URL` must be reachable from the ESP32 (deploy the API or use your LAN IP), `DEVICE_KEY` = `DEVICE_API_KEY`.
 
-Demo logins (password `password123`): `faculty@attendiq.dev`, `21cs001@attendiq.dev` … `21cs004@attendiq.dev`. Demo card UIDs are in `backend/src/seed.js`; register real cards by updating `students.rfid_uid`.
+Demo logins (password `password123`): `faculty1@attendiq.dev` … `faculty3@attendiq.dev` (one subject each), `21cs001@attendiq.dev` … `21cs004@attendiq.dev`. Demo card UIDs are in `backend/src/seed.js`; register real cards by updating `students.rfid_uid`.
 
 ## Frontend
 Next.js (App Router, JavaScript) + Tailwind CSS v4. The browser calls `/api/*` on the Next origin and `next.config.mjs` proxies to `API_URL` (default `http://localhost:4000`), so the backend's httpOnly session cookie stays first-party; nothing auth-related is stored in the browser.

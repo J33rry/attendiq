@@ -15,27 +15,33 @@ const hash = (p) => bcrypt.hashSync(p, 10);
 const DEMO_PASSWORD = "password123";
 
 export async function seedDemo() {
-    const [fu] = await db
-        .insert(users)
-        .values({
-            role: "faculty",
-            email: "faculty@attendiq.dev",
-            name: "Dr. Meera Iyer",
-            passwordHash: hash(DEMO_PASSWORD),
-        })
-        .returning();
-    const [fac] = await db
-        .insert(faculty)
-        .values({ userId: fu.id, employeeId: "EMP001", department: "CSE" })
-        .returning();
-    const subs = await db
-        .insert(subjects)
-        .values([
-            { code: "CS101", name: "Data Structures", facultyId: fac.id },
-            { code: "CS102", name: "Operating Systems", facultyId: fac.id },
-            { code: "CS103", name: "Computer Networks", facultyId: fac.id },
-        ])
-        .returning();
+    // 3 teachers, each teaching one subject
+    const teachers = [
+        ["Dr. Meera Iyer", "EMP001", "CS101", "Data Structures"],
+        ["Prof. Arjun Nair", "EMP002", "CS102", "Operating Systems"],
+        ["Dr. Kavita Rao", "EMP003", "CS103", "Computer Networks"],
+    ];
+    const subs = [];
+    for (const [i, [name, empId, code, subName]] of teachers.entries()) {
+        const [fu] = await db
+            .insert(users)
+            .values({
+                role: "faculty",
+                email: `faculty${i + 1}@attendiq.dev`,
+                name,
+                passwordHash: hash(DEMO_PASSWORD),
+            })
+            .returning();
+        const [fac] = await db
+            .insert(faculty)
+            .values({ userId: fu.id, employeeId: empId, department: "CSE" })
+            .returning();
+        const [sub] = await db
+            .insert(subjects)
+            .values({ code, name: subName, facultyId: fac.id })
+            .returning();
+        subs.push(sub);
+    }
 
     const people = [
         ["Aarav Sharma", "21CS001", "06:51:E6:06", 0.9],
@@ -101,7 +107,7 @@ export async function seedDemo() {
                 .insert(classSessions)
                 .values({
                     subjectId: sub.id,
-                    facultyId: fac.id,
+                    facultyId: sub.facultyId,
                     startsAt,
                     endsAt: new Date(startsAt.getTime() + 3_600_000),
                     topic: `Lecture ${++k}`,
@@ -137,7 +143,7 @@ if (
     await db.execute(sql`TRUNCATE users, holidays RESTART IDENTITY CASCADE`);
     await seedDemo();
     console.log(
-        `Seeded. Logins: faculty@attendiq.dev / 21cs001@attendiq.dev … (password: ${DEMO_PASSWORD})`,
+        `Seeded. Logins: faculty1-3@attendiq.dev / 21cs001@attendiq.dev … (password: ${DEMO_PASSWORD})`,
     );
     await closeDb();
 }
