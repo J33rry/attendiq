@@ -10,7 +10,9 @@ const PLACEHOLDER_KEY = "your-groq-api-key-here";
 const MAX_TOOL_ROUNDS = 4;
 const TIMEOUT_MS = 20_000;
 
-const apiKey = () => process.env.GROQ_API_KEY || PLACEHOLDER_KEY;
+// Groq retires models regularly; override with GROQ_MODEL (list: GET https://api.groq.com/openai/v1/models).
+const MODEL = () => process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+const apiKey = () => process.env.GROQ_API_KEY?.trim() || PLACEHOLDER_KEY;
 export const groqConfigured = () => apiKey() !== PLACEHOLDER_KEY && process.env.NODE_ENV !== "test";
 
 async function chat(messages, { tools = true } = {}) {
@@ -18,10 +20,12 @@ async function chat(messages, { tools = true } = {}) {
     method: "POST",
     headers: { authorization: `Bearer ${apiKey()}`, "content-type": "application/json" },
     body: JSON.stringify({
-      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+      model: MODEL(),
       messages,
       temperature: 0.2,
-      max_tokens: 500,
+      max_tokens: 2000,
+      // gpt-oss models reason before answering; keep that short so the answer fits in max_tokens.
+      ...(/gpt-oss/.test(MODEL()) ? { reasoning_effort: "low" } : {}),
       ...(tools ? { tools: TOOLS, tool_choice: "auto", parallel_tool_calls: false } : {}),
     }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
