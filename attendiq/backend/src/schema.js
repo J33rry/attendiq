@@ -67,5 +67,6 @@ export const attendance = pgTable("attendance", {
   studentId: integer("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
   status: text("status").notNull(), // present | absent
   source: text("source").notNull().default("manual"), // rfid | manual
+  reason: text("reason"), // optional note from faculty when marking manually (e.g. "Medical leave")
   markedAt: timestamp("marked_at").defaultNow().notNull(),
 }, (t) => [unique("attendance_unique").on(t.sessionId, t.studentId)]);

@@ -41,7 +41,7 @@ r.get("/attendance", wrap(async (req, res) => {
   const conds = [eq(attendance.studentId, req.student.id)];
   if (subjectId) conds.push(eq(classSessions.subjectId, subjectId));
   const history = await db
-    .select({ sessionId: classSessions.id, startsAt: classSessions.startsAt, sessionStatus: classSessions.status, status: attendance.status, source: attendance.source, subject: subjects.name, code: subjects.code })
+    .select({ sessionId: classSessions.id, startsAt: classSessions.startsAt, sessionStatus: classSessions.status, status: attendance.status, source: attendance.source, reason: attendance.reason, subject: subjects.name, code: subjects.code })
     .from(attendance)
     .innerJoin(classSessions, eq(classSessions.id, attendance.sessionId))
     .innerJoin(subjects, eq(subjects.id, classSessions.subjectId))

@@ -188,6 +188,23 @@ test("faculty: sessions CRUD, cancel blocks attendance, manual marking & correct
   assert.equal((await call("PUT", `/api/faculty/sessions/${sid}/attendance/${ids.A.id}`, { cookie: f, body: { status: "present" } })).status, 409);
 });
 
+test("faculty can attach a reason when marking; students see it; re-marking replaces it", async () => {
+  const f = await login("f@t.dev");
+  const [ses] = await db.insert(schema.classSessions).values({ subjectId: ids.sub.id, facultyId: ids.fac.id, startsAt: new Date(Date.now() - 3 * H), endsAt: new Date(Date.now() - 2 * H) }).returning();
+  const one = await call("PUT", `/api/faculty/sessions/${ses.id}/attendance/${ids.A.id}`, { cookie: f, body: { status: "present", reason: "  Forgot ID card  " } });
+  assert.equal(one.json.attendance.reason, "Forgot ID card");
+  assert.equal((await call("PUT", `/api/faculty/sessions/${ses.id}/attendance`, { cookie: f, body: { records: [{ studentId: ids.B.id, status: "absent", reason: "Left early" }] } })).status, 200);
+  assert.equal((await call("PUT", `/api/faculty/sessions/${ses.id}/attendance/${ids.A.id}`, { cookie: f, body: { status: "present", reason: "x".repeat(201) } })).status, 400);
+  const roster = (await call("GET", `/api/faculty/sessions/${ses.id}/attendance`, { cookie: f })).json.roster;
+  assert.deepEqual(roster.map((r) => r.reason), ["Forgot ID card", "Left early"]);
+  const hist = (await call("GET", `/api/student/attendance`, { cookie: await login("a@t.dev") })).json.history;
+  assert.equal(hist.find((h) => h.sessionId === ses.id).reason, "Forgot ID card");
+  await call("PUT", `/api/faculty/sessions/${ses.id}/attendance/${ids.A.id}`, { cookie: f, body: { status: "absent", reason: "" } });
+  const [row] = await db.select().from(schema.attendance).where(eq(schema.attendance.sessionId, ses.id)).orderBy(schema.attendance.studentId);
+  assert.equal(row.reason, null);
+  await db.delete(schema.classSessions).where(eq(schema.classSessions.id, ses.id));
+});
+
 test("faculty cannot touch another faculty's session/subject", async () => {
   const f2 = await login("f2@t.dev");
   assert.equal((await call("GET", `/api/faculty/sessions/${ids.live.id}/attendance`, { cookie: f2 })).status, 404);

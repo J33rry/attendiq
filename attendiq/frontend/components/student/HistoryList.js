@@ -12,9 +12,12 @@ function StatusPill({ r }) {
 }
 
 const Source = ({ r }) => (
-  <span className="inline-flex items-center gap-1 text-ink-400">
-    <Icon name={r.source === "rfid" ? "rfid" : "pencil"} size={14} />
-    {r.source === "rfid" ? "ID card tap" : "Marked by faculty"}
+  <span className="inline-flex flex-col">
+    <span className="inline-flex items-center gap-1 text-ink-400">
+      <Icon name={r.source === "rfid" ? "rfid" : "pencil"} size={14} />
+      {r.source === "rfid" ? "ID card tap" : "Marked by faculty"}
+    </span>
+    {r.reason && <span className="mt-0.5 text-xs italic text-ink-500">“{r.reason}”</span>}
   </span>
 );
 

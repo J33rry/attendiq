@@ -23,6 +23,7 @@ export default function SessionRegister() {
   const att = useApi(() => facultyApi.sessionAttendance(id), [id]);
   const dash = useApi(() => facultyApi.dashboard());
   const [draft, setDraft] = useState({}); // studentId -> "present" | "absent"
+  const [reasons, setReasons] = useState({}); // studentId -> optional note for a changed mark
   const [q, setQ] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState(null); // overwrites awaiting confirmation
@@ -70,6 +71,7 @@ export default function SessionRegister() {
     if (server === status) delete next[sid]; else next[sid] = status;
     return next;
   });
+  const discard = () => { setDraft({}); setReasons({}); };
   const markRemaining = (status) => setDraft((d) => {
     const next = { ...d };
     roster.forEach((r) => { if ((d[r.studentId] ?? r.status) === "unmarked") next[r.studentId] = status; });
@@ -85,11 +87,11 @@ export default function SessionRegister() {
   async function save() {
     setSaving(true);
     try {
-      const records = changes.map((r) => ({ studentId: r.studentId, status: draft[r.studentId] }));
+      const records = changes.map((r) => ({ studentId: r.studentId, status: draft[r.studentId], reason: reasons[r.studentId]?.trim() || null }));
       await facultyApi.saveAttendance(id, records);
       const fresh = await facultyApi.sessionAttendance(id);
       setData(fresh);
-      setDraft({});
+      discard();
       setConfirm(null);
       toast.success("Attendance saved", `${plural(records.length, "student's", "students'")} attendance updated for ${subject?.name ?? "this session"}.`);
     } catch (e) {
@@ -155,7 +157,7 @@ export default function SessionRegister() {
             ) : (
               <Card className="divide-y divide-paper-200">
                 {rows.map((r) => (
-                  <div key={r.studentId} className={cx("flex flex-wrap items-center gap-3 p-3.5 transition sm:flex-nowrap sm:p-4", r.changed && "bg-butter-50")}>
+                  <div key={r.studentId} className={cx("flex flex-wrap items-center gap-3 p-3.5 transition sm:p-4", r.changed ? "bg-butter-50" : "sm:flex-nowrap")}>
                     <Avatar name={r.name} tone={r.effective === "present" ? "sage" : r.effective === "absent" ? "coral" : "ink"} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{r.name}</p>
@@ -169,6 +171,7 @@ export default function SessionRegister() {
                         )}
                         {r.changed && <span className="font-semibold text-butter-700">· was {LABEL[r.status].toLowerCase()}</span>}
                       </p>
+                      {r.reason && !r.changed && <p className="mt-0.5 truncate text-xs italic text-ink-500" title={r.reason}>“{r.reason}”</p>}
                     </div>
                     <div className="ml-auto flex rounded-full bg-paper-100 p-1" role="radiogroup" aria-label={`Attendance for ${r.name}`}>
                       {["present", "absent"].map((st) => (
@@ -181,6 +184,15 @@ export default function SessionRegister() {
                         </button>
                       ))}
                     </div>
+                    {r.changed && (
+                      <div className="w-full pl-[3.25rem]">
+                        <label className="sr-only" htmlFor={`reason-${r.studentId}`}>Reason for marking {r.name}</label>
+                        <input id={`reason-${r.studentId}`} value={reasons[r.studentId] ?? ""} maxLength={200}
+                          onChange={(e) => setReasons((x) => ({ ...x, [r.studentId]: e.target.value }))}
+                          placeholder="Reason (optional) — e.g. card forgotten, medical leave"
+                          className="h-9 w-full rounded-xl bg-white px-3 text-sm ring-1 ring-paper-300 placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-sky-400" />
+                      </div>
+                    )}
                   </div>
                 ))}
               </Card>
@@ -197,7 +209,7 @@ export default function SessionRegister() {
         <div className="fixed inset-x-0 bottom-[4.5rem] z-30 px-4 lg:bottom-6 lg:left-[260px]">
           <div className="mx-auto flex max-w-2xl animate-pop items-center gap-3 rounded-2xl bg-ink-900 p-3 pl-5 text-paper-50 shadow-pop">
             <p className="flex-1 text-sm"><span className="font-semibold">{plural(changes.length, "unsaved change", "unsaved changes")}</span><span className="text-paper-300 max-sm:hidden"> — nothing is saved until you press save</span></p>
-            <Button size="sm" variant="ghost" className="!text-paper-200 hover:!bg-white/10" onClick={() => setDraft({})} disabled={saving}>Discard</Button>
+            <Button size="sm" variant="ghost" className="!text-paper-200 hover:!bg-white/10" onClick={discard} disabled={saving}>Discard</Button>
             <Button size="sm" variant="sage" icon="check" loading={saving} onClick={requestSave}>Save attendance</Button>
           </div>
         </div>
@@ -209,7 +221,10 @@ export default function SessionRegister() {
         <ul className="mt-3 space-y-2">
           {confirm?.map((r) => (
             <li key={r.studentId} className="flex items-center justify-between gap-2 rounded-xl bg-white p-2.5 ring-1 ring-paper-300">
-              <span className="truncate font-semibold">{r.name}</span>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{r.name}</span>
+                {reasons[r.studentId]?.trim() && <span className="block truncate text-xs italic text-ink-500">“{reasons[r.studentId].trim()}”</span>}
+              </span>
               <span className="flex shrink-0 items-center gap-1.5 text-xs">
                 <Badge tone={r.status === "present" ? "sage" : "coral"}>{LABEL[r.status]}{r.source === "rfid" ? " (card)" : ""}</Badge>
                 <Icon name="arrowRight" size={14} />

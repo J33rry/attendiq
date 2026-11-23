@@ -20,6 +20,8 @@ async function ownSession(req, id) {
   return s;
 }
 const idParam = (v) => z.coerce.number().int().positive().parse(v);
+// Optional note a teacher can attach when marking manually; blank means "no reason".
+const reasonField = z.string().trim().max(200).nullish().transform((v) => v || null);
 
 r.get("/me", wrap(async (req, res) => {
   const f = req.faculty;
@@ -141,7 +143,7 @@ r.post("/sessions/:id/cancel", wrap(async (req, res) => {
 r.get("/sessions/:id/attendance", wrap(async (req, res) => {
   const s = await ownSession(req, idParam(req.params.id));
   const roster = await db
-    .select({ studentId: students.id, name: users.name, rollNo: students.rollNo, status: attendance.status, source: attendance.source, markedAt: attendance.markedAt })
+    .select({ studentId: students.id, name: users.name, rollNo: students.rollNo, status: attendance.status, source: attendance.source, reason: attendance.reason, markedAt: attendance.markedAt })
     .from(enrollments)
     .innerJoin(students, eq(students.id, enrollments.studentId)).innerJoin(users, eq(users.id, students.userId))
     .leftJoin(attendance, and(eq(attendance.studentId, students.id), eq(attendance.sessionId, s.id)))
@@ -152,20 +154,20 @@ r.get("/sessions/:id/attendance", wrap(async (req, res) => {
 r.put("/sessions/:id/attendance/:studentId", wrap(async (req, res) => {
   const s = await ownSession(req, idParam(req.params.id));
   const studentId = idParam(req.params.studentId);
-  const { status } = z.object({ status: z.enum(["present", "absent"]) }).parse(req.body);
+  const { status, reason } = z.object({ status: z.enum(["present", "absent"]), reason: reasonField }).parse(req.body);
   if (s.status === "cancelled") throw httpError(409, "Cannot mark attendance for a cancelled session");
   const [enr] = await db.select().from(enrollments).where(and(eq(enrollments.studentId, studentId), eq(enrollments.subjectId, s.subjectId)));
   if (!enr) throw httpError(404, "Student is not enrolled in this subject");
-  const [row] = await db.insert(attendance).values({ sessionId: s.id, studentId, status, source: "manual" })
-    .onConflictDoUpdate({ target: [attendance.sessionId, attendance.studentId], set: { status, source: "manual", markedAt: new Date() } }).returning();
+  const [row] = await db.insert(attendance).values({ sessionId: s.id, studentId, status, source: "manual", reason })
+    .onConflictDoUpdate({ target: [attendance.sessionId, attendance.studentId], set: { status, source: "manual", reason, markedAt: new Date() } }).returning();
   if (s.status === "scheduled") await db.update(classSessions).set({ status: "conducted" }).where(eq(classSessions.id, s.id));
   res.json({ attendance: row });
 }));
 
 r.put("/sessions/:id/attendance", wrap(async (req, res) => {
-  // bulk: [{studentId, status}]
+  // bulk: [{studentId, status, reason?}]
   const s = await ownSession(req, idParam(req.params.id));
-  const { records } = z.object({ records: z.array(z.object({ studentId: z.number().int(), status: z.enum(["present", "absent"]) })).min(1) }).parse(req.body);
+  const { records } = z.object({ records: z.array(z.object({ studentId: z.number().int(), status: z.enum(["present", "absent"]), reason: reasonField })).min(1) }).parse(req.body);
   if (s.status === "cancelled") throw httpError(409, "Cannot mark attendance for a cancelled session");
   const enrolled = await db.select({ id: enrollments.studentId }).from(enrollments).where(eq(enrollments.subjectId, s.subjectId));
   const ok = new Set(enrolled.map((e) => e.id));
@@ -173,8 +175,8 @@ r.put("/sessions/:id/attendance", wrap(async (req, res) => {
   if (bad.length) throw httpError(400, `Not enrolled: ${bad.map((b) => b.studentId).join(", ")}`);
   await db.transaction(async (tx) => {
     for (const x of records) {
-      await tx.insert(attendance).values({ sessionId: s.id, studentId: x.studentId, status: x.status, source: "manual" })
-        .onConflictDoUpdate({ target: [attendance.sessionId, attendance.studentId], set: { status: x.status, source: "manual", markedAt: new Date() } });
+      await tx.insert(attendance).values({ sessionId: s.id, studentId: x.studentId, status: x.status, source: "manual", reason: x.reason })
+        .onConflictDoUpdate({ target: [attendance.sessionId, attendance.studentId], set: { status: x.status, source: "manual", reason: x.reason, markedAt: new Date() } });
     }
     if (s.status === "scheduled") await tx.update(classSessions).set({ status: "conducted" }).where(eq(classSessions.id, s.id));
   });

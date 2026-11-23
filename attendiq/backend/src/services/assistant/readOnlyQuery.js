@@ -23,7 +23,7 @@ export const VIEWS = {
   my_profile: "roll_no, department, semester, name, rfid_registered (boolean)",
   my_subjects: "subject_id, code, name, faculty_name",
   my_sessions: "session_id, subject_id, subject_code, subject_name, topic, starts_at, ends_at, status ('scheduled'|'conducted'|'cancelled'), holiday_name",
-  my_attendance: "session_id, subject_id, subject_code, subject_name, starts_at, session_status, status ('present'|'absent'), source ('rfid'|'manual'), marked_at",
+  my_attendance: "session_id, subject_id, subject_code, subject_name, starts_at, session_status, status ('present'|'absent'), source ('rfid'|'manual'), reason (teacher's note, may be null), marked_at",
   holidays_list: "date, name",
 };
 
@@ -50,7 +50,7 @@ my_sessions AS (
 ),
 my_attendance AS (
   SELECT a.session_id, ms.subject_id, ms.subject_code, ms.subject_name, ms.starts_at, ms.status AS session_status,
-         a.status, a.source, a.marked_at
+         a.status, a.source, a.reason, a.marked_at
   FROM attendance a JOIN my_sessions ms ON ms.session_id = a.session_id
   WHERE a.student_id = ${studentId}
 ),
