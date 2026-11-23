@@ -16,6 +16,26 @@ const INTENT = {
   eligibility: { label: "Eligibility", tone: "coral" },
 };
 
+/** Model answers: render "- item" lines as a list, other lines as paragraphs. */
+function AiBody({ text }) {
+  const blocks = [];
+  for (const line of text.split(/\n+/).map((l) => l.trim()).filter(Boolean)) {
+    const item = line.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+    const last = blocks[blocks.length - 1];
+    if (item) (last?.list ? last.items.push(item[1]) : blocks.push({ list: true, items: [item[1]] }));
+    else blocks.push({ text: line.replace(/\*\*(.+?)\*\*/g, "$1") });
+  }
+  return (
+    <div className="space-y-1.5">
+      {blocks.map((b, i) => b.list ? (
+        <ul key={i} className="space-y-1">
+          {b.items.map((it, j) => <li key={j} className="flex gap-2"><span className="mt-2 size-1.5 shrink-0 rounded-full bg-sage-400" />{it.replace(/\*\*(.+?)\*\*/g, "$1")}</li>)}
+        </ul>
+      ) : <p key={i}>{b.text}</p>)}
+    </div>
+  );
+}
+
 /** Turn "A — x: 1; y: 2." style answers into a short list when the backend returns one. */
 function AnswerBody({ text }) {
   const m = text.match(/^(.*?)\s—\s(.*)$/);
@@ -68,7 +88,9 @@ export default function AssistantPage() {
     setMessages((m) => [...m, { id: idRef.current++, from: "me", text: q }]);
     setBusy(true);
     try {
-      const res = await studentApi.ask(q);
+      const history = messages.filter((m) => m.id !== 0 && !m.error)
+        .slice(-6).map((m) => ({ role: m.from === "me" ? "user" : "assistant", content: m.text }));
+      const res = await studentApi.ask(q, history);
       setMessages((m) => [...m, { id: idRef.current++, from: "bot", text: res.answer, intent: res.intent }]);
     } catch (e) {
       setMessages((m) => [...m, { id: idRef.current++, from: "bot", error: true, text: e.message }]);
@@ -84,7 +106,7 @@ export default function AssistantPage() {
         <span className="grid size-12 place-items-center rounded-2xl bg-sage-50 ring-1 ring-sage-200"><LogoMark size={30} /></span>
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold leading-tight">AttendIQ Assistant</h1>
-          <p className="text-sm text-ink-400">Rule-based helper · reads your live attendance, no AI model involved</p>
+          <p className="text-sm text-ink-400">AI helper · reads your live attendance (read-only), can&apos;t change any records</p>
         </div>
       </header>
 
@@ -97,7 +119,7 @@ export default function AssistantPage() {
                 m.from === "me" ? "rounded-br-md bg-ink-900 text-paper-50"
                   : m.error ? "rounded-bl-md bg-coral-50 text-coral-700 ring-1 ring-coral-200"
                     : "rounded-bl-md bg-white text-ink-900 shadow-soft ring-1 ring-paper-300/70")}>
-                {m.from === "bot" && !m.error ? <AnswerBody text={m.text} /> : <p>{m.error ? `I couldn't get an answer: ${m.text}` : m.text}</p>}
+                {m.from === "bot" && !m.error ? (m.intent === "ai" ? <AiBody text={m.text} /> : <AnswerBody text={m.text} />) : <p>{m.error ? `I couldn't get an answer: ${m.text}` : m.text}</p>}
                 {INTENT[m.intent] && <Badge tone={INTENT[m.intent].tone} className="mt-2">{INTENT[m.intent].label}</Badge>}
               </div>
             </div>

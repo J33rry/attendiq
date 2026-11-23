@@ -5,7 +5,8 @@ import { db, schema } from "../db.js";
 import { requireRole, loadProfile, wrap, httpError } from "../middleware.js";
 import { subjectStats, overall, THRESHOLD_PCT } from "../services/attendanceService.js";
 import { bunkPlan, recoveryPlan } from "../services/plannerService.js";
-import { answer } from "../services/assistantService.js";
+import { askAssistant } from "../services/assistant/groqAssistant.js";
+import { screenInput, sanitizeHistory, rateLimit, REFUSAL, LIMITS } from "../services/assistant/guardrails.js";
 
 const { classSessions, attendance, subjects, enrollments, students, users } = schema;
 const r = Router();
@@ -65,8 +66,26 @@ r.get("/planner/recovery", wrap(async (req, res) => {
 }));
 
 r.post("/assistant", wrap(async (req, res) => {
-  const { question } = z.object({ question: z.string().min(1).max(500) }).parse(req.body);
-  res.json(answer(question, await subjectStats(req.student.id)));
+  const { question, history } = z.object({
+    question: z.string().trim().min(1).max(LIMITS.questionChars),
+    history: z.array(z.object({ role: z.string(), content: z.string() })).max(20).optional(),
+  }).parse(req.body);
+
+  const limit = rateLimit(req.user.id);
+  if (!limit.ok) {
+    res.set("retry-after", String(limit.retryAfterSec));
+    throw httpError(429, `Too many questions. Try again in ${limit.retryAfterSec}s.`);
+  }
+  const screened = screenInput(question);
+  if (!screened.ok) return res.json({ intent: "refused", answer: REFUSAL, source: "guardrail" });
+
+  res.json(await askAssistant({
+    question: screened.question,
+    history: sanitizeHistory(history),
+    student: req.student,
+    user: req.user,
+    stats: await subjectStats(req.student.id),
+  }));
 }));
 
 export default r;

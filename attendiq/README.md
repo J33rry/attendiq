@@ -46,7 +46,15 @@ frontend/
 - Bunk: safe skips = floor(attended/0.75 − conducted). Recovery: ceil((0.75·conducted − attended)/0.25).
 - RFID scan (`POST /api/device/scan`, header `x-device-key`): finds the student's currently running session (10 min grace before start), rejects unregistered cards, cancelled/out-of-window sessions and duplicates (unique `(session_id, student_id)`).
 - Holidays cancel all sessions on that date; cancelled sessions reject attendance and are excluded from percentages.
-- Assistant is rule-based (`services/assistantService.js`); `answer()` is the seam for an external LLM.
+- Assistant (`services/assistant/`): Groq LLM (`GROQ_API_KEY`, `GROQ_MODEL`) with a system prompt (`prompt.js`) and guardrails (`guardrails.js`: injection/off-topic screening, per-user rate limit, output scrubbing of hashes/keys/other emails). Without a real key, or if Groq fails, it falls back to the rule-based `assistantService.js`.
+- The model's only tool is `query_attendance_db` (`readOnlyQuery.js`): a single SELECT over `my_*` views pre-filtered to the logged-in student, statically validated, run in a `READ ONLY` transaction with a 3s timeout and always rolled back. For a database-level guarantee too, create a SELECT-only role and set `ASSISTANT_DATABASE_URL`:
+  ```sql
+  CREATE ROLE attendiq_assistant LOGIN PASSWORD '...';
+  GRANT USAGE ON SCHEMA public TO attendiq_assistant;
+  GRANT SELECT ON students, enrollments, subjects, faculty, class_sessions, attendance, holidays TO attendiq_assistant;
+  GRANT SELECT (id, name) ON users TO attendiq_assistant;   -- no emails, no password hashes
+  ALTER ROLE attendiq_assistant SET default_transaction_read_only = on;
+  ```
 
 ## Notes
 - Sessions are server-side (random token in an httpOnly cookie, SHA-256 hashed in `auth_sessions`, 12h). Set `NODE_ENV=production` over HTTPS for secure cookies.

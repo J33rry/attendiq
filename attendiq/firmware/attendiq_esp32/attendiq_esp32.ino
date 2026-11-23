@@ -9,8 +9,8 @@
 // ---- EDIT THESE (do not commit real values) ----
 const char* WIFI_SSID    = "motoedge60fusion_9739";
 const char* WIFI_PASS    = "physicsvk1817";
-const char* SERVER_URL   = "http://10.179.251.63:4000/api/device/scan";
-const char* DEVICE_KEY   = "dev-device-key"; 
+const char* SERVER_URL   = "https://attendiq-puce.vercel.app/api/device/scan";
+const char* DEVICE_KEY   = "this-project-is-belonging-to-sneha"; 
 
 #define SS_PIN 5
 #define RST_PIN 22

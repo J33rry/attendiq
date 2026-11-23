@@ -63,7 +63,7 @@ export const studentApi = {
   attendance: (subjectId) => api("/student/attendance", { query: { subjectId } }),
   bunk: (skip = 1, subjectId) => api("/student/planner/bunk", { query: { skip, subjectId } }),
   recovery: () => api("/student/planner/recovery"),
-  ask: (question) => api("/student/assistant", { method: "POST", body: { question } }),
+  ask: (question, history = []) => api("/student/assistant", { method: "POST", body: { question, history } }),
   holidays: () => api("/holidays"),
 };
 
